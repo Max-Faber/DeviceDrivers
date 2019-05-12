@@ -51,7 +51,7 @@ unsigned char ucKeys;
 	int t, h, p, x, y, z;
 		ucKeys = shReadJoystick();
 		printf("keys = %02x\n", ucKeys);
-		/*if (shGetTempHumid(&t, &h))
+		if (shGetTempHumid(&t, &h))
 		{
 			printf("T=%d, H=%d\n", t, h);
 		}
@@ -67,7 +67,7 @@ unsigned char ucKeys;
 		{
 			UpdatePattern();
 			usleep(100000);
-		}*/
+		}
 	} // while waiting for joystick press
 	shShutdown();
 	return 0;

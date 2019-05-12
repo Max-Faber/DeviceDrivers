@@ -79,11 +79,11 @@ char filename[32];
 		return -1;
 	}
 
-	//if (ioctl(file_led, I2C_SLAVE, 0x46) < 0)
-	//{
-	//	fprintf(stderr, "Failed to acquire bus for LED matrix\n");
-	//	goto badexit;
-	//}
+	if (ioctl(file_led, I2C_SLAVE, 0x46) < 0)
+	{
+		fprintf(stderr, "Failed to acquire bus for LED matrix\n");
+		goto badexit;
+	}
 
 	file_acc = open(filename, O_RDWR);
 	if (ioctl(file_acc, I2C_SLAVE, 0x6a) < 0)
