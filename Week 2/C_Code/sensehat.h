@@ -44,6 +44,8 @@ unsigned char shReadJoystick(void);
 //
 int shGetMagneto(int *Mx, int *My, int *Mz);
 
+int shGetGyro(int *Gx, int *Gy, int *Gz);
+
 //
 // Set the pixel the given color. The display will flicker
 // if it's updated for each pixel change, so it's best

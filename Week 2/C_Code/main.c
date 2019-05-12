@@ -29,7 +29,7 @@ uint16_t color;
 		color |= (((j & 32)>>5) * (j & 31)<<11); // red
 		x = i & 7;
 		y = (i >> 3);
-		shSetPixel(x, y, color, 0);
+		shSetPixel(x, y, color, 0); //Last var decides if the led matrix must update
 	}
 	shSetPixel(x, y, color, 1); // force an update
 	iOffset++; // increment for next time through
