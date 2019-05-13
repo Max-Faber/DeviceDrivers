@@ -8,7 +8,7 @@
 // RRRRRRRRGGGGGGGGBBBBBBBB
 // Each byte can have 64 unique levels (0-63)
 
-void SetJoystickDirection(unsigned char dir, int gyrox, int gyroy, int gyroz)
+void SetJoystickDirection(unsigned char dir)
 {
     int i, j, ledx, ledy;
     uint16_t color;
@@ -51,14 +51,18 @@ int main(int argc, char *argv[])
     //Start an infinite loop to update joystick directions.
     while(1)
     {
+        printf("test");
         //Get the value from the joystick if a button is pressed.
         joystickValues = shReadJoystick();
+        shGetGyro(&gyrox, &gyroy, &gyroz);
+        printf("Gyro value: x = %d, y = %d, z = %d", gyrox, gyroy, gyroz);
         //Base the arrow colors on gyro values.
         if(joystickValues > 0)
         {
-            shGetGyro(&gyrox, &gyroy, &gyroz);
-            SetJoystickDirection(joystickValues, gyrox, gyroy, gyroz);
+            printf("Joystick value = %d", joystickValues);
+            SetJoystickDirection(joystickValues);
         }
+        usleep(1000000);
     }
     shShutdown();
 	return 0;

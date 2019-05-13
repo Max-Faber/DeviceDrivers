@@ -9,6 +9,6 @@
 
 
 
-void SetJoystickDirection(unsigned char dir, int gyrox, int gyroy, int gyroz);
+void SetJoystickDirection(unsigned char dir);
 
 #endif
