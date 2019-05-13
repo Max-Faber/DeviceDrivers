@@ -1,6 +1,12 @@
 #include "devdriv_2a.h"
 
 
+void sighandler(int signum)
+{
+    shShutdown(); //Free resources
+    exit(1);
+}
+
 // The LED Array is handled by a dedicated microcontroller
 // It must be updated in a single shot by writing
 // 192 bytes starting at register 0
@@ -65,6 +71,7 @@ int main(int argc, char *argv[])
     gyroz = 0;
     temp = 0;
     humid = 0;
+    signal(SIGINT, sighandler);
     //Start an infinite loop to update joystick directions.
     while(1)
     {

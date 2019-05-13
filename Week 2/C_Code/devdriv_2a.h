@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <sensehat.h>
+#include <signal.h>
+#include <stdlib.h>
 
 #define RED 32768
 #define GREEN 256
@@ -74,6 +76,7 @@ uint16_t Off[MATRIXAXISSIZE][MATRIXAXISSIZE] = {
     {OFF, OFF, OFF, OFF, OFF, OFF, OFF, OFF},
     {OFF, OFF, OFF, OFF, OFF, OFF, OFF, OFF}}; 
 
+void sighandler(int signum);
 
 void SetJoystickDirection(unsigned char dir);
 
