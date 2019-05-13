@@ -20,7 +20,7 @@ void SetJoystickDirection(unsigned char dir)
     int y = 7;
     for (i=0; i < 8; i++) // do 64 pixels (whole matrix)
 	{
-		color = 8388608 >> i; // blue 
+		color = 1 << i; // blue 
 		//color |= 255; // green
 		//color |= 255; // red
 		x = 8 - i;
@@ -51,18 +51,19 @@ int main(int argc, char *argv[])
     //Start an infinite loop to update joystick directions.
     while(1)
     {
-        printf("test");
-        //Get the value from the joystick if a button is pressed.
-        joystickValues = shReadJoystick();
         shGetGyro(&gyrox, &gyroy, &gyroz);
-        printf("Gyro value: x = %d, y = %d, z = %d", gyrox, gyroy, gyroz);
-        //Base the arrow colors on gyro values.
+        printf("Gyro value: x = %d, y = %d, z = %d \n", gyrox, gyroy, gyroz);
+        //Get the value from the joystick if a button is pressed.
+        
+
         if(joystickValues > 0)
         {
-            printf("Joystick value = %d", joystickValues);
-            SetJoystickDirection(joystickValues);
+            printf("Joystick value = %02x\n", joystickValues);
+            //SetJoystickDirection(joystickValues);
         }
-        usleep(1000000);
+        joystickValues = shReadJoystick();
+        fflush(stdout);
+        usleep(100000);
     }
     shShutdown();
 	return 0;

@@ -246,10 +246,11 @@ int shGetGyro(int *Gx, int *Gy, int *Gz)
 unsigned char ucTemp[8];
 int rc;
 
-	rc = i2cRead(file_acc, 0x18+0x80, ucTemp, 6);
+	rc = i2cRead(file_acc, 0x28+0x80, ucTemp, 6);
 	if (rc == 6)
 	{
         int x, y, z;
+
 		x = ucTemp[0] + (ucTemp[1] << 8);
 		y = ucTemp[2] + (ucTemp[3] << 8);
 		z = ucTemp[4] + (ucTemp[5] << 8);
@@ -257,9 +258,7 @@ int rc;
 		if (x > 32767) x -= 65536;
 		if (y > 32767) y -= 65536;
 		if (z > 32767) z -= 65536;
-		*Gx = x;
-		*Gy = y;
-		*Gz = z;
+		*Gx = x; *Gy = y; *Gz = z;
 		return 1;
 	}
 	return 0;
@@ -356,7 +355,6 @@ void shShutdown(void)
 	if (file_acc != -1) close(file_acc);
 	if (file_mag != -1) close(file_mag);
 	file_led = file_hum = file_pres = file_acc = file_mag = -1;
-    printf("Bye!");
 } /* shShutdown() */
 
 static int i2cRead(int iHandle, unsigned char ucAddr, unsigned char *buf, int iLen)
