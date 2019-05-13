@@ -29,6 +29,8 @@ uint16_t color;
 		color |= (((j & 32)>>5) * (j & 31)<<11); // red
 		x = i & 7;
 		y = (i >> 3);
+        printf("x = %d, y = %d\n", x, y);
+        usleep(500000);
 		shSetPixel(x, y, color, 0); //Last var decides if the led matrix must update
 	}
 	shSetPixel(x, y, color, 1); // force an update
@@ -50,18 +52,18 @@ unsigned char ucKeys;
 	{
 	int t, h, p, x, y, z;
 		ucKeys = shReadJoystick();
-		printf("keys = %02x\n", ucKeys);
+		//printf("keys = %02x\n", ucKeys);
 		if (shGetTempHumid(&t, &h))
 		{
-			printf("T=%d, H=%d\n", t, h);
+			//printf("T=%d, H=%d\n", t, h);
 		}
 		if (shGetPressure(&p, &t))
 		{
-			printf("P=%d, T=%d\n", p, t);
+			//printf("P=%d, T=%d\n", p, t);
 		}
 		if (shGetMagneto(&x, &y, &z))
 		{
-			printf("accX=%d, accY=%d, accZ=%d\n", x, y, z);
+			//printf("accX=%d, accY=%d, accZ=%d\n", x, y, z);
 		}
 		for (i=0; i<5; i++) // update pixels 5x as fast as sensor readings
 		{
