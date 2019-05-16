@@ -1,0 +1,27 @@
+#ifndef MAIN_H
+#define MAIN_H
+
+#include <stdio.h>
+
+
+#define I2CCHANNEL 1
+
+
+
+//Initialize the sensors on the Sense Hat and open the I2C channel
+int InitialiseSenseHatI2C();
+
+//Get Magnetometer values, pass by reference
+int GetMagneto(int *mx, int *my, int *mz);
+
+//Get Gyroscope values, pass by reference
+int GetGyro(int *gx, int *gy, int *gz);
+
+int GetPressure(int *pressure, int *temp);
+
+int GetTempHumid(int *temp, int *humid);
+
+void ShutdownSenseHat(void);
+
+
+#endif
