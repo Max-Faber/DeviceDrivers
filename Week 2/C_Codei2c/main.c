@@ -2,16 +2,54 @@
 
 int main(int argc, char* argv[])
 {
-    
     int error = 0;
     error = InitialiseSenseHatI2C();
     return error;
 }
 
+void SetJoystickDirection(unsigned char dir)
+{
+    int x, y;
+    uint8_t Arrow[BITSPERRGBCOLOR][BITSPERRGBCOLOR][BYTESPERRGBVALUE];
+    //Prepare LED matrix arrow directions
+    switch (dir)
+    {
+        case JOY_DOWN:
+            memcpy(Arrow, ArrowDown, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+        case JOY_UP:
+            memcpy(Arrow, ArrowUp, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+        case JOY_LEFT:
+            memcpy(Arrow, ArrowLeft, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+        case JOY_RIGHT:
+            memcpy(Arrow, ArrowRight, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+        case JOY_ENTER:
+            memcpy(Arrow, Crosshair, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+        default:
+            memcpy(Arrow, Off, sizeof(uint8_t) * MATRIXAXISSIZE * MATRIXAXISSIZE * BYTESPERRGBVALUE);
+        break;
+    }
+    
+    for (y=0; y < MATRIXAXISSIZE; y++) // do 64 pixels (whole matrix)
+	{
+        for(x = 0; x < MATRIXAXISSIZE; x++)
+        {
+            SetPixel(x, y, Arrow[y][x][0], Arrow[y][x][1], Arrow[y][x][2]);
+        }
+	}
+    x = 0;
+    y = 0;
+	SetRegisterRGB(); // force an update
+}
+
 int InitialiseSenseHatI2C()
 {
     char i2cFileName[32];
-    char dataBuffer[32];
+    unsigned char dataBuffer[32];
     //Put the channel in the filename
     sprintf(i2cFileName, "/dev/i2c-%d", I2CCHANNEL);
     
@@ -53,13 +91,13 @@ int InitialiseSenseHatI2C()
     
     // Init accelerometer and gyroscope
 	dataBuffer[0] = 0x60;                           //119hz accel
-	WriteToI2C(file_acc, 0x20, dataBuffer);
+	WriteToI2C(file_acc, 0x20, dataBuffer, 1);
 	dataBuffer[0] = 0x38;                           //Enable gyro on all axes
-	WriteToI2C(file_acc, 0x1e, dataBuffer);
+	WriteToI2C(file_acc, 0x1e, dataBuffer, 1);
     dataBuffer[0] = 0x28;                           //Data rate + full scale + bw selection
                                                     //Bits:        ODR_G2 | ODR_G1 | ODR_G0 | FS_G1 | FS_G0 | 0 | BW_G1 | BW_G0
                                                     //0x28 = 14.9hz, 500dps
-    WriteToI2C(file_acc, 0x10, dataBuffer);      //Gyroscope ctrl_reg1
+    WriteToI2C(file_acc, 0x10, dataBuffer, 1);      //Gyroscope ctrl_reg1
     
     //Init humidity sensor
     //Stream mode (F_MODE2:0=”010” in FIFO_CTRL (2Eh)[7:5]) 
@@ -77,6 +115,7 @@ int InitialiseSenseHatI2C()
     
     while(1)
     {
+    	SetJoystickDirection(JOY_DOWN);
         GetGyro(true, &x, &y, &z);
         printf("Gyro: x=%d, y=%d, z=%d\n", x, y ,z);
         usleep(1000000);
@@ -84,20 +123,56 @@ int InitialiseSenseHatI2C()
     return 0;
 }
 
+int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue)
+{
+	if(xPos < 0 || xPos > 8)
+		return 0;
+	else if(yPos < 0 || yPos > 8)
+		return 0;
+
+	else if(file_led < 0)
+		return 0;
+	int LED_Register_Index_Starting_Point = (yPos * BITSPERCOLOR) + xPos;
+
+	LEDArray[LED_Register_Index_Starting_Point] = RGB_Red;
+	LEDArray[LED_Register_Index_Starting_Point + 8] = RGB_Green;
+	LEDArray[LED_Register_Index_Starting_Point + 16] = RGB_Blue;
+	return 1;
+}
+
+void SetRegisterRGB()
+{
+	WriteToI2C(file_led, 0, LEDArray, 192);
+}
+
+//
+// Set a single pixel on the 8x8 LED Array
+//
+int shSetPixel(int x, int y, uint16_t color, int bUpdate)
+{
+int i;
+
+	if (x >= 0 && x < 8 && y >= 0 && y < 8 && file_led >= 0)
+	{
+		i = (y*24)+x; // offset into array
+		LEDArray[i] = (uint8_t)((color >> 10) & 0x3e); // Red
+		LEDArray[i+8] = (uint8_t)((color >> 5) & 0x3f); // Green
+		LEDArray[i+16] = (uint8_t)((color << 1) & 0x3e); // Blue
+		if (bUpdate)
+		{
+			//i2cWrite(file_led, 0, LEDArray, 192); // have to send the whole array at once
+		}
+		return 1;
+	}
+	return 0;
+} /* shSetPixel() */
+
 int GetGyro(bool rawData, int *gx, int *gy, int *gz)
 {
     char dataBufferTemp[8];
-    int rc, i;
+    int rc;
 
-	rc = ReadFromI2C(file_acc, 0x28+0x80, dataBufferTemp);
-    
-    size_t dataLength = sizeof(dataBufferTemp) / sizeof(char*);
-    printf("Databuffer data:");
-    for(i = 0; i < dataLength + 1; i++)
-    {
-       printf("[%d]: 0x%X ", i, dataBufferTemp[i]);
-    }
-    printf("\n");
+	rc = ReadFromI2C(file_acc, 0x28+0x80, dataBufferTemp, 6);
     
 	if (rc == 6)
 	{
@@ -151,16 +226,10 @@ int tmp;
 	return 0; // not ready
 }
 
-int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer)
+int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer, size_t dataLength)
 {
     int rc;
-    size_t dataLength = sizeof(dataBuffer) / sizeof(char*);
-    if(dataLength == 0)
-    {
-        dataLength = 1;
-    }
 	rc = write(i2cFileDesc, &regAddr, 1);
-    printf("RC: %d dataLength: %d, i2cFileDesc: %d\n", rc, dataLength, i2cFileDesc);
 	if (rc == 1)
 	{
 		rc = read(i2cFileDesc, dataBuffer, dataLength);
@@ -168,25 +237,17 @@ int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer)
 	return rc;
 }
 
-int WriteToI2C(int i2cFileDesc, char regAddr, char* dataBuffer)
+int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t dataLength)
 {
     int rc, i;
-    char dataBufferTemp[8];
+    unsigned char dataBufferTemp[512];
     if(dataBuffer == NULL)
     {
         return -1;
     }
     
     dataBufferTemp[0] = regAddr; //Add the register address to the beginning of the array
-    size_t dataLength = sizeof(dataBuffer) / sizeof(char*);
 	memcpy(&dataBufferTemp[1], dataBuffer, dataLength); // followed by the data
-    
-    printf("Databuffer data:");
-    for(i = 0; i < dataLength + 1; i++)
-    {
-       printf("[%d]: 0x%X ", i, dataBufferTemp[i]);
-    }
-    printf("\n");
     
 	rc = write(i2cFileDesc, dataBufferTemp, dataLength + 1);
 	return rc-1;
