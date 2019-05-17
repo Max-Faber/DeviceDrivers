@@ -61,6 +61,13 @@ int InitialiseSenseHatI2C()
                                                     //0x28 = 14.9hz, 500dps
     WriteToI2C(file_acc, 0x10, dataBuffer);      //Gyroscope ctrl_reg1
     
+    //Init humidity sensor
+    //Stream mode (F_MODE2:0=”010” in FIFO_CTRL (2Eh)[7:5]) 
+    //Pressure val : REF_P_XL(08h) LSB, REF_P_L(09h) middle part, REF_P_H(0Ah) MSB
+    //Settings: CTRL_REG1(20h) [6:4] output data rate -> 100 = 25hz
+    //                          [2] BDU, make sure that LSB and MSB match, don't update until read
+    WriteToI2C(file_hum, 0x2E, 'b01000000');
+    
     
     int x, y, z;
     x = 0;
@@ -118,7 +125,30 @@ int CalculateGyroDegrees(int *gx, int *gy, int *gz)
 
 int GetTempHumid(int *temp, int *humidity)
 {
-    return 0;
+unsigned char ucTemp[4];
+int rc;
+int H_T_out, T_out, T0_degC, T1_degC;
+int H0_rh, H1_rh;
+int tmp;
+
+	rc = i2cRead(file_hum, 0x28+0x80, ucTemp, 4);
+	if (rc == 4)
+	{
+		H_T_out = ucTemp[0] + (ucTemp[1] << 8);
+		T_out = ucTemp[2] + (ucTemp[3] << 8);
+		if (H_T_out > 32767) H_T_out -=65536;
+		if (T_out > 32767) T_out -= 65536;
+		T0_degC = T0_degC_x8 / 8;
+		T1_degC = T1_degC_x8 / 8;
+		H0_rh = H0_rH_x2 / 2;
+		H1_rh = H1_rH_x2 / 2;
+		tmp = (H_T_out - H0_T0_OUT) * (H1_rh - H0_rh)*10;
+		*Humid = tmp / (H1_T0_OUT - H0_T0_OUT) + H0_rh*10;
+		tmp = (T_out - T0_OUT) * (T1_degC - T0_degC)*10;
+		*Temp = tmp / (T1_OUT - T0_OUT) + T0_degC*10;
+		return 1;
+	}
+	return 0; // not ready
 }
 
 int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer)
