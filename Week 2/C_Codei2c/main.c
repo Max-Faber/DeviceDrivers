@@ -1,5 +1,9 @@
 #include "main.h"
 
+//TODO: fix joystick input
+//      fix own gyro init    
+
+
 int main(int argc, char* argv[])
 {
     int error = 0;
@@ -76,17 +80,9 @@ int InitialiseSenseHatI2C()
 		ShutdownSenseHat();
         return -1;
 	}
+
     
-    //HTS221 address (humidity and temperature) is 0x5f
-    file_hum = open(i2cFileName, O_RDWR);
-	if (ioctl(file_hum, I2C_SLAVE, 0x5f) < 0) //Open the I2C file for read and write (Slave).
-	{
-		fprintf(stderr, "Failed to acquire bus for Humidity sensor\n");
-		ShutdownSenseHat();
-        return -1;
-	}
-    
-    printf("File_des led: %d acc: %d hum: %d\n", file_led, file_acc, file_hum);
+    printf("File_des led: %d acc: %d\n", file_led, file_acc);
     
     
     // Init accelerometer and gyroscope
@@ -98,23 +94,16 @@ int InitialiseSenseHatI2C()
                                                     //Bits:        ODR_G2 | ODR_G1 | ODR_G0 | FS_G1 | FS_G0 | 0 | BW_G1 | BW_G0
                                                     //0x28 = 14.9hz, 500dps
     WriteToI2C(file_acc, 0x10, dataBuffer, 1);      //Gyroscope ctrl_reg1
-    
-    //Init humidity sensor
-    //Stream mode (F_MODE2:0=”010” in FIFO_CTRL (2Eh)[7:5]) 
-    //Pressure val : REF_P_XL(08h) LSB, REF_P_L(09h) middle part, REF_P_H(0Ah) MSB
-    //Settings: CTRL_REG1(20h) [6:4] output data rate -> 100 = 25hz
-    //                          [2] BDU, make sure that LSB and MSB match, don't update until read
-    WriteToI2C(file_hum, 0x2E, 'b01000000');
-    
-    
+
+
     int x, y, z;
     x = 0;
     y = 0;
     z = 0;
-    
-    
+
     while(1)
     {
+        
     	SetJoystickDirection(JOY_DOWN);
         GetGyro(true, &x, &y, &z);
         printf("Gyro: x=%d, y=%d, z=%d\n", x, y ,z);
@@ -169,10 +158,10 @@ int i;
 
 int GetGyro(bool rawData, int *gx, int *gy, int *gz)
 {
-    char dataBufferTemp[8];
+    unsigned char dataBufferTemp[8];
     int rc;
 
-	rc = ReadFromI2C(file_acc, 0x28+0x80, dataBufferTemp, 6);
+	rc = ReadFromI2C(file_acc, 0x28, dataBufferTemp, 6);
     
 	if (rc == 6)
 	{
@@ -198,35 +187,7 @@ int CalculateGyroDegrees(int *gx, int *gy, int *gz)
     return 0;
 }
 
-int GetTempHumid(int *temp, int *humidity)
-{
-unsigned char ucTemp[4];
-int rc;
-int H_T_out, T_out, T0_degC, T1_degC;
-int H0_rh, H1_rh;
-int tmp;
-
-	rc = i2cRead(file_hum, 0x28+0x80, ucTemp, 4);
-	if (rc == 4)
-	{
-		H_T_out = ucTemp[0] + (ucTemp[1] << 8);
-		T_out = ucTemp[2] + (ucTemp[3] << 8);
-		if (H_T_out > 32767) H_T_out -=65536;
-		if (T_out > 32767) T_out -= 65536;
-		T0_degC = T0_degC_x8 / 8;
-		T1_degC = T1_degC_x8 / 8;
-		H0_rh = H0_rH_x2 / 2;
-		H1_rh = H1_rH_x2 / 2;
-		tmp = (H_T_out - H0_T0_OUT) * (H1_rh - H0_rh)*10;
-		*Humid = tmp / (H1_T0_OUT - H0_T0_OUT) + H0_rh*10;
-		tmp = (T_out - T0_OUT) * (T1_degC - T0_degC)*10;
-		*Temp = tmp / (T1_OUT - T0_OUT) + T0_degC*10;
-		return 1;
-	}
-	return 0; // not ready
-}
-
-int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer, size_t dataLength)
+int ReadFromI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t dataLength)
 {
     int rc;
 	rc = write(i2cFileDesc, &regAddr, 1);
@@ -239,7 +200,7 @@ int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer, size_t dataLeng
 
 int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t dataLength)
 {
-    int rc, i;
+    int rc;
     unsigned char dataBufferTemp[512];
     if(dataBuffer == NULL)
     {
@@ -263,7 +224,6 @@ void ShutdownSenseHat(void)
         //i2cWrite(file_led, 0, LEDArray, 192);
         close(file_led);
     }
-	if (file_hum != -1) close(file_hum);
 	if (file_acc != -1) close(file_acc);
-	file_led = file_hum = file_acc = -1;
+	file_led = file_acc = -1;
 }

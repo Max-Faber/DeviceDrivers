@@ -101,7 +101,6 @@ uint8_t Off[MATRIXAXISSIZE][MATRIXAXISSIZE][BYTESPERRGBVALUE] = {
 
 //Make the I2C file descriptors available for all functions
 static int file_led = -1; // LED array
-static int file_hum = -1; // humidity/temp sensor
 static int file_acc = -1; // accelerometer/gyro
 static unsigned char LEDArray[192];
 //Create a global data buffer for all the functions
@@ -111,7 +110,7 @@ static unsigned char LEDArray[192];
 int InitialiseSenseHatI2C(void);
 
 //Command to read data from the I2C data buffer.
-int ReadFromI2C(int i2cFileDesc, char regAddr, char* dataBuffer, size_t dataLength);
+int ReadFromI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t dataLength);
 
 //Command to write data to the I2C data buffer. 
 int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t dataLength);
@@ -128,9 +127,6 @@ int GetGyro(bool rawData, int *gx, int *gy, int *gz);
 
 //Calculate 0-360 degree output.
 int CalculateGyroDegrees(int *gx, int *gy, int *gz);
-
-//Get Temperatur values, pass by reference.
-int GetTempHumid(int *temp, int *humidity);
 
 //Empty all registers on the sense hat, like the LED matrix buffer.
 //Close all I2C channels.
