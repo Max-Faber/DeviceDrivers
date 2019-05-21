@@ -29,6 +29,7 @@ ldr r1, =arrow_up @ address of buffer
 mov r2, #192 @ length from read
 bl write
 
+
 mov r0, r4 @ file_descriptor
 ldr r1, =address_joystick
 mov r2,#1
@@ -39,7 +40,9 @@ ldr r1, =joystick_buffer
 mov r2, #1
 bl read
 
-#cmp joystick_buffer, #4
+ldr r0, =joystick_buffer
+cmp r0, #4
+beq write_leds
 
 
 ldr r0, =joystick_text
@@ -51,6 +54,13 @@ pop     {ip, pc}
 #CLOSE FILE
 bl close
 mov r0, r4 @ return file_descriptor as error code
+
+write_leds:
+mov r0, r4 @ file_descriptor
+ldr r1, =arrow_left @ address of buffer
+mov r2, #192 @ length from read
+bl write
+#svc 0
 
 exit: 
 pop {r4, lr}
@@ -70,7 +80,7 @@ b exit
 
 .data
 
-joystick_text: .asciz "Joystick value: '%x'\n"
+joystick_text: .asciz "Joystick value: '%d'\n"
 errmsg: .asciz "create failed"
 errmsgend:
 newfile: .asciz "/dev/i2c-1"
