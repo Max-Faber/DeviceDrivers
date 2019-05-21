@@ -7,7 +7,7 @@
 int main(int argc, char* argv[])
 {
     int error = 0;
-    error = InitialiseSenseHatI2C();
+    error = InitialiseSenseHatI2C();    
     return error;
 }
 
@@ -102,10 +102,15 @@ int InitialiseSenseHatI2C()
     y = 0;
     z = 0;
 
+    while(true)
+    {
+        printf("Joystick: %d\n", shReadJoystick());
+    }
+
     while(1)
     {
         
-    	SetJoystickDirection(JOY_DOWN);
+    	SetJoystickDirection(10);
         GetGyro(true, &x, &y, &z);
         printf("Gyro: x=%d, y=%d, z=%d\n", x, y ,z);
         usleep(1000000);
@@ -127,6 +132,7 @@ int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB
 	LEDArray[LED_Register_Index_Starting_Point] = RGB_Red;
 	LEDArray[LED_Register_Index_Starting_Point + 8] = RGB_Green;
 	LEDArray[LED_Register_Index_Starting_Point + 16] = RGB_Blue;
+    printf("(%d, %d): %d, %d, %d\n", xPos, yPos, RGB_Red, RGB_Green, RGB_Blue);
 	return 1;
 }
 
@@ -137,7 +143,7 @@ void SetRegisterRGB()
     //    printf("%hhx ", LEDArray[i]);
     //}
     printf("\n\n");
-	WriteToI2C(file_led, 0x46, LEDArray, 192);
+	WriteToI2C(file_led, 0, LEDArray, 192);
     printf("\n\n");
 }
 
@@ -240,3 +246,17 @@ void ShutdownSenseHat(void)
 	if (file_acc != -1) close(file_acc);
 	file_led = file_acc = -1;
 }
+
+unsigned char shReadJoystick(void)
+{
+unsigned char ucBuf[2];
+int rc;
+
+    if (file_led != -1)
+    {
+        rc = ReadFromI2C(file_led, 0xf2, ucBuf, 1);
+        if (rc == 1)
+            return ucBuf[0];
+    }
+    return 0;
+} /* shReadJoystick() */

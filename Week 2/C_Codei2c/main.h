@@ -136,6 +136,7 @@ void SetJoystickDirection(unsigned char dir);
 
 int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue);
 void SetRegisterRGB();
+unsigned char shReadJoystick(void);
 
 #endif
 
