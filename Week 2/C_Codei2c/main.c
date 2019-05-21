@@ -63,8 +63,9 @@ int InitialiseSenseHatI2C()
 		fprintf(stderr, "Failed to open the i2c bus; need to run as sudo?\n");
 		return -1;
 	}
-    
+    printf("file_led: %d\n");
     //LED address is 0x46
+    printf("I2C_SLAVE: %d\n", I2C_SLAVE);
 	if (ioctl(file_led, I2C_SLAVE, 0x46) < 0) //Open the I2C file for read and write (Slave).
 	{
 		fprintf(stderr, "Failed to acquire bus for LED matrix\n");
@@ -131,11 +132,13 @@ int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB
 
 void SetRegisterRGB()
 {
-    for(int i = 0; i < 192; i++)
-    {
-        printf("0x%x ", LEDArray[i]);
-    }
-	WriteToI2C(file_led, 0, LEDArray, 192);
+    //for(int i = 0; i < 192; i++)
+    //{
+    //    printf("%hhx ", LEDArray[i]);
+    //}
+    printf("\n\n");
+	WriteToI2C(file_led, 0x46, LEDArray, 192);
+    printf("\n\n");
 }
 
 //
@@ -212,7 +215,13 @@ int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t 
     }
     
     dataBufferTemp[0] = regAddr; //Add the register address to the beginning of the array
+    printf("dataBufferTemp[0] = 0x%X\n", regAddr);
 	memcpy(&dataBufferTemp[1], dataBuffer, dataLength); // followed by the data
+
+    for(int i = 0; i < 512; i++)
+    {
+        printf("0x%X, ", dataBufferTemp[i]);
+    }
 
 	rc = write(i2cFileDesc, dataBufferTemp, dataLength + 1);
 	return rc-1;
