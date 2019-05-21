@@ -3,12 +3,8 @@
 .global _start
 
 main:
-	push    {ip, lr}
-	b init
-
-	#CLOSE FILE
-	#bl close
-	mov r0, r4 @ return file_descriptor as error code
+	#push    {ip, lr}
+	#b init
 
 init:
 	#OPEN (CREATE) FILE
@@ -27,12 +23,13 @@ init:
 	mov r2, #0x46
 	bl ioctl
 
+    
+    read_joystick_value:
 	mov r0, r4 @ file_descriptor
 	ldr r1, =address_joystick
 	mov r2,#1
 	bl write
-
-	read_joystick_value:
+    
 	mov r0, r4
 	ldr r1, =joystick_buffer
 	mov r2, #1
@@ -57,43 +54,66 @@ init:
 	mov r1, #2
 	cmp r0, r1
 	beq write_leds_right
-	#bne read_joystick_value
+    
+	mov r1, #8
+	cmp r0, r1
+	beq write_leds_crosshair
+    
+	mov r1, #0
+	cmp r0, r1
+	beq write_leds_off
+    
+	bne read_joystick_value
 
 print_joystick_value:
-	#ldr r0, =joystick_text
-	#ldr r1, =joystick_buffer @seed printf
-	#ldr r1, [r1]
-	#bl      printf          @ print string and pass params
-	#pop     {ip, pc}
+	ldr r0, =joystick_text
+	ldr r1, =joystick_buffer @seed printf
+	ldr r1, [r1]
+	bl      printf          @ print string and pass params
+	pop     {ip, pc}
 	b read_joystick_value
 
 write_leds_down:
 	mov r0, r4 @ file_descriptor
 	ldr r1, =arrow_down @ address of buffer
-	mov r2, #192 @ length from read
+	mov r2, #193 @ length from read
 	bl write
-	b print_joystick_value
+	b read_joystick_value
 
 write_leds_up:
 	mov r0, r4 @ file_descriptor
 	ldr r1, =arrow_up @ address of buffer
-	mov r2, #192 @ length from read
+	mov r2, #193 @ length from read
 	bl write
-	b print_joystick_value
+	b read_joystick_value
 
 write_leds_left:
 	mov r0, r4 @ file_descriptor
 	ldr r1, =arrow_left @ address of buffer
-	mov r2, #192 @ length from read
+	mov r2, #193 @ length from read
 	bl write
-	b print_joystick_value
+	b read_joystick_value
 
 write_leds_right:
 	mov r0, r4 @ file_descriptor
 	ldr r1, =arrow_right @ address of buffer
-	mov r2, #192 @ length from read
+	mov r2, #193 @ length from read
 	bl write
-	b print_joystick_value
+	b read_joystick_value
+    
+write_leds_off:
+	mov r0, r4 @ file_descriptor
+	ldr r1, =off @ address of buffer
+	mov r2, #193 @ length from read
+	bl write
+	b read_joystick_value
+    
+write_leds_crosshair:
+	mov r0, r4 @ file_descriptor
+	ldr r1, =cross_hair @ address of buffer
+	mov r2, #193 @ length from read
+	bl write
+	b read_joystick_value
 
 .data
 
