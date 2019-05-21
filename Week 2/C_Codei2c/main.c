@@ -43,6 +43,9 @@ void SetJoystickDirection(unsigned char dir)
         for(x = 0; x < MATRIXAXISSIZE; x++)
         {
             SetPixel(x, y, Arrow[y][x][0], Arrow[y][x][1], Arrow[y][x][2]);
+            //printf("X:%d Y:%d (%d, %d, %d )", x, y, Arrow[y][x][0], Arrow[y][x][1], Arrow[y][x][2]);
+            if(x == 7)
+                printf("\n");
         }
 	}
     x = 0;
@@ -63,9 +66,7 @@ int InitialiseSenseHatI2C()
 		fprintf(stderr, "Failed to open the i2c bus; need to run as sudo?\n");
 		return -1;
 	}
-    printf("file_led: %d\n");
     //LED address is 0x46
-    printf("I2C_SLAVE: %d\n", I2C_SLAVE);
 	if (ioctl(file_led, I2C_SLAVE, 0x46) < 0) //Open the I2C file for read and write (Slave).
 	{
 		fprintf(stderr, "Failed to acquire bus for LED matrix\n");
@@ -82,10 +83,7 @@ int InitialiseSenseHatI2C()
         return -1;
 	}
 
-    
-    printf("File_des led: %d acc: %d\n", file_led, file_acc);
-    
-    
+       
     // Init accelerometer and gyroscope
 	dataBuffer[0] = 0x60;                           //119hz accel
 	WriteToI2C(file_acc, 0x20, dataBuffer, 1);
@@ -96,21 +94,16 @@ int InitialiseSenseHatI2C()
                                                     //0x28 = 14.9hz, 500dps
     WriteToI2C(file_acc, 0x10, dataBuffer, 1);      //Gyroscope ctrl_reg1
 
-
+    unsigned char joystickval;
     int x, y, z;
     x = 0;
     y = 0;
     z = 0;
-
-    while(true)
-    {
-        printf("Joystick: %d\n", shReadJoystick());
-    }
-
+    joystickval = 0;
+   
     while(1)
-    {
-        
-    	SetJoystickDirection(10);
+    {   joystickval = shReadJoystick();
+    	SetJoystickDirection(joystickval);
         GetGyro(true, &x, &y, &z);
         printf("Gyro: x=%d, y=%d, z=%d\n", x, y ,z);
         usleep(1000000);
@@ -120,31 +113,26 @@ int InitialiseSenseHatI2C()
 
 int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue)
 {
-	if(xPos < 0 || xPos > 8)
+	if(xPos < 0 || xPos >= 8)
 		return 0;
-	else if(yPos < 0 || yPos > 8)
+	else if(yPos < 0 || yPos >= 8)
 		return 0;
 
 	else if(file_led < 0)
 		return 0;
 	int LED_Register_Index_Starting_Point = (yPos * BITSPERCOLOR) + xPos;
 
+    printf("LED: %d", LED_Register_Index_Starting_Point);
+    
 	LEDArray[LED_Register_Index_Starting_Point] = RGB_Red;
 	LEDArray[LED_Register_Index_Starting_Point + 8] = RGB_Green;
 	LEDArray[LED_Register_Index_Starting_Point + 16] = RGB_Blue;
-    printf("(%d, %d): %d, %d, %d\n", xPos, yPos, RGB_Red, RGB_Green, RGB_Blue);
 	return 1;
 }
 
 void SetRegisterRGB()
 {
-    //for(int i = 0; i < 192; i++)
-    //{
-    //    printf("%hhx ", LEDArray[i]);
-    //}
-    printf("\n\n");
 	WriteToI2C(file_led, 0, LEDArray, 192);
-    printf("\n\n");
 }
 
 //
@@ -179,14 +167,9 @@ int GetGyro(bool rawData, int *gx, int *gy, int *gz)
 	if (rc == 6)
 	{
         int x, y, z;
-        printf("read succesfull");
 		x = dataBufferTemp[0] + (dataBufferTemp[1] << 8);
 		y = dataBufferTemp[2] + (dataBufferTemp[3] << 8);
 		z = dataBufferTemp[4] + (dataBufferTemp[5] << 8);
-		// fix the signed values
-		//if (x > 32767) x -= 65536;
-        //if (y > 32767) y -= 65536;
-		//if (z > 32767) z -= 65536;
 		*gx = x; 
         *gy = y; 
         *gz = z;
@@ -221,13 +204,7 @@ int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t 
     }
     
     dataBufferTemp[0] = regAddr; //Add the register address to the beginning of the array
-    printf("dataBufferTemp[0] = 0x%X\n", regAddr);
 	memcpy(&dataBufferTemp[1], dataBuffer, dataLength); // followed by the data
-
-    for(int i = 0; i < 512; i++)
-    {
-        printf("0x%X, ", dataBufferTemp[i]);
-    }
 
 	rc = write(i2cFileDesc, dataBufferTemp, dataLength + 1);
 	return rc-1;
