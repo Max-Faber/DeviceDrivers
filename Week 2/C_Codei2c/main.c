@@ -131,6 +131,10 @@ int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB
 
 void SetRegisterRGB()
 {
+    for(int i = 0; i < 192; i++)
+    {
+        printf("0x%x ", LEDArray[i]);
+    }
 	WriteToI2C(file_led, 0, LEDArray, 192);
 }
 
@@ -209,7 +213,7 @@ int WriteToI2C(int i2cFileDesc, char regAddr, unsigned char* dataBuffer, size_t 
     
     dataBufferTemp[0] = regAddr; //Add the register address to the beginning of the array
 	memcpy(&dataBufferTemp[1], dataBuffer, dataLength); // followed by the data
-    
+
 	rc = write(i2cFileDesc, dataBufferTemp, dataLength + 1);
 	return rc-1;
 }
