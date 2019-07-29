@@ -1,0 +1,98 @@
+#include <stdio.h>
+#include "kernel.h"
+#include "swis.h"
+#include <stdint.h>
+
+#define BITSPERRGBCOLOR 8
+#define BYTESPERRGBVALUE 3
+#define BITSPERCOLOR (BYTESPERRGBVALUE * BITSPERRGBCOLOR)
+#define MATRIXAXISSIZE 8
+
+_kernel_oserror *err;
+static unsigned char LEDArray[300] = {[0 ... 299] = 0};
+
+typedef struct iic_transfer {
+	unsigned addr:8;
+	unsigned :21;
+	unsigned riscos_retry:1;
+	unsigned checksumonly:1;
+	unsigned nostart:1;
+	union {
+		unsigned cheksum;
+		void *data;
+	} d;
+	unsigned len;
+} iic_transfer;
+
+uint8_t ArrowUp[MATRIXAXISSIZE][MATRIXAXISSIZE][BYTESPERRGBVALUE] = {
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{0, 0, 0}, {0, 30, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 30, 0}, {0, 0, 0}},
+    {{0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}},
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
+
+int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue);
+
+int main()
+{
+	//uint8_t data[192] = {[0 ... 10] = 6};
+        struct iic_transfer iic_data_structure;
+        iic_data_structure.addr = 0x46 << 1;
+        iic_data_structure.nostart = 0;
+        iic_data_structure.d.data = LEDArray;
+        iic_data_structure.checksumonly = 0;
+        iic_data_structure.len = 300;
+	_kernel_swi_regs regs;
+	int led_matrix_address = 0x46;
+
+	int i, x, y;
+	for(x = 0; x < 8; x++)
+	{
+		for(y = 0; y < 8; y++)
+		{
+			SetPixel(x, y, ArrowUp[x][y][0], ArrowUp[x][y][1], ArrowUp[x][y][2]);
+		}
+	}
+
+	for(i = 0; i < 192; i++)
+	{
+		if(i % 4 == 0)
+			printf("\n");
+		printf("LEDArray[%d] = %d, ", i, LEDArray[i]);
+	}
+	regs.r[0] = (int)&iic_data_structure;
+	regs.r[1] = 1;
+	err = _kernel_swi(OS_IICOp, &regs, &regs);
+	if(err != NULL)
+		printf("%s %x\n", err->errmess, err->errnum);
+	else
+		printf("No errors\n");
+	return 0;
+}
+
+int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue)
+{
+	if(xPos < 0 || xPos >= 8)
+	{
+		printf("Error\n");
+		return 0;
+	}
+	else if(yPos < 0 || yPos >= 8)
+	{
+		printf("Error\n");
+		return 0;
+	}
+
+	int LED_Register_Index_Starting_Point = (yPos * BITSPERCOLOR) + xPos;
+
+	printf("Index: %d\n", LED_Register_Index_Starting_Point);
+
+	LEDArray[LED_Register_Index_Starting_Point] = RGB_Red;
+	LEDArray[LED_Register_Index_Starting_Point + 8] = RGB_Green;
+	LEDArray[LED_Register_Index_Starting_Point + 16] = RGB_Blue;
+
+	return 1;
+}
