@@ -8,8 +8,7 @@
 #define BITSPERCOLOR (BYTESPERRGBVALUE * BITSPERRGBCOLOR)
 #define MATRIXAXISSIZE 8
 
-_kernel_oserror *err;
-static unsigned char LEDArray[300] = {[0 ... 299] = 0};
+static unsigned char LEDArray[193] = {[0 ... 192] = 0};
 
 typedef struct iic_transfer {
 	unsigned addr:8;
@@ -18,7 +17,7 @@ typedef struct iic_transfer {
 	unsigned checksumonly:1;
 	unsigned nostart:1;
 	union {
-		unsigned cheksum;
+		unsigned checksum;
 		void *data;
 	} d;
 	unsigned len;
@@ -34,21 +33,23 @@ uint8_t ArrowUp[MATRIXAXISSIZE][MATRIXAXISSIZE][BYTESPERRGBVALUE] = {
     {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
     {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
 
+unsigned char ReadJoyStick();
+void ExecuteSWI(_kernel_swi_regs *regs, int swi);
 int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue);
 
 int main()
 {
-	//uint8_t data[192] = {[0 ... 10] = 6};
         struct iic_transfer iic_data_structure;
         iic_data_structure.addr = 0x46 << 1;
         iic_data_structure.nostart = 0;
-        iic_data_structure.d.data = LEDArray;
+        iic_data_structure.d.data = (int*)&LEDArray;
         iic_data_structure.checksumonly = 0;
-        iic_data_structure.len = 300;
+        iic_data_structure.len = 193;
+        iic_data_structure.riscos_retry = 1;
 	_kernel_swi_regs regs;
-	int led_matrix_address = 0x46;
 
-	int i, x, y;
+	int x, y;
+
 	for(x = 0; x < 8; x++)
 	{
 		for(y = 0; y < 8; y++)
@@ -57,20 +58,62 @@ int main()
 		}
 	}
 
-	for(i = 0; i < 192; i++)
-	{
-		if(i % 4 == 0)
-			printf("\n");
-		printf("LEDArray[%d] = %d, ", i, LEDArray[i]);
-	}
 	regs.r[0] = (int)&iic_data_structure;
 	regs.r[1] = 1;
-	err = _kernel_swi(OS_IICOp, &regs, &regs);
+	ExecuteSWI(&regs, OS_IICOp);
+	ReadJoyStick();
+
+	printf("Done\n");
+	return 0;
+}
+
+unsigned char ReadJoyStick()
+{
+	unsigned char buffer[193] = {0}, JoyStickData = 0xf2;
+	_kernel_swi_regs regs;
+	struct iic_transfer iic_data_structure[2];
+	iic_data_structure[0].addr = 0x46 << 1;
+	//iic_data_structure[0].addr = iic_data_structure[0].addr & 1;
+	iic_data_structure[0].nostart = 0;
+	iic_data_structure[0].d.data = (int*)&JoyStickData;
+	iic_data_structure[0].checksumonly = 0;
+	iic_data_structure[0].len = sizeof(JoyStickData);
+
+	regs.r[0] = (int)&iic_data_structure[0];
+	regs.r[1] = 1;
+
+	ExecuteSWI(&regs, OS_IICOp);
+	printf("Done writing\n");
+
+	iic_data_structure[1].addr = (0x46 << 1) & 1;
+	iic_data_structure[1].nostart = 0;
+	iic_data_structure[1].d.data = (char*)&buffer;
+	iic_data_structure[1].checksumonly = 1;
+	iic_data_structure[1].len = sizeof(char) * 193;
+	iic_data_structure[1].riscos_retry = 1;
+
+	_kernel_swi_regs test;
+	test.r[0] = (int)&iic_data_structure[1];
+	test.r[1] = 1;
+
+	ExecuteSWI(&test, OS_IICOp);
+	printf("Done reading\n");
+
+	//int i;
+	//for(i = 0; i < 193; i++)
+	//{
+	//	printf("%d, ", buffer[i]);
+	//}
+	printf("Bufer: %d\n", JoyStickData);
+}
+
+void ExecuteSWI(_kernel_swi_regs *regs, int swi)
+{
+	_kernel_oserror *err;
+	err = _kernel_swi(swi, regs, regs);
+
 	if(err != NULL)
 		printf("%s %x\n", err->errmess, err->errnum);
-	else
-		printf("No errors\n");
-	return 0;
 }
 
 int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue)
@@ -88,8 +131,7 @@ int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB
 
 	int LED_Register_Index_Starting_Point = (yPos * BITSPERCOLOR) + xPos;
 
-	printf("Index: %d\n", LED_Register_Index_Starting_Point);
-
+	LED_Register_Index_Starting_Point++;
 	LEDArray[LED_Register_Index_Starting_Point] = RGB_Red;
 	LEDArray[LED_Register_Index_Starting_Point + 8] = RGB_Green;
 	LEDArray[LED_Register_Index_Starting_Point + 16] = RGB_Blue;
