@@ -33,7 +33,7 @@ uint8_t ArrowUp[MATRIXAXISSIZE][MATRIXAXISSIZE][BYTESPERRGBVALUE] = {
     {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
     {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 30, 0}, {0, 30, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
 
-unsigned char ReadJoyStick();
+int ReadJoyStick();
 void ExecuteSWI(_kernel_swi_regs *regs, int swi);
 int SetPixel(int xPos, int yPos, uint8_t RGB_Red, uint8_t RGB_Green, uint8_t RGB_Blue);
 
@@ -61,50 +61,44 @@ int main()
 	regs.r[0] = (int)&iic_data_structure;
 	regs.r[1] = 1;
 	ExecuteSWI(&regs, OS_IICOp);
-	ReadJoyStick();
+
+	int joystick = ReadJoyStick();
+	while(1)
+	{
+		int temp = ReadJoyStick();
+		if(joystick != temp)
+		{
+			printf("Joystick changed from %d to %d\n", joystick, temp);
+			joystick = temp;
+		}
+	}
 
 	printf("Done\n");
 	return 0;
 }
-
-unsigned char ReadJoyStick()
+int ReadJoyStick()
 {
-	unsigned char buffer[193] = {0}, JoyStickData = 0xf2;
+	unsigned char buffer[2] = {0}, JoyStickData = 0xf2;
 	_kernel_swi_regs regs;
 	struct iic_transfer iic_data_structure[2];
 	iic_data_structure[0].addr = 0x46 << 1;
-	//iic_data_structure[0].addr = iic_data_structure[0].addr & 1;
 	iic_data_structure[0].nostart = 0;
 	iic_data_structure[0].d.data = (int*)&JoyStickData;
 	iic_data_structure[0].checksumonly = 0;
 	iic_data_structure[0].len = sizeof(JoyStickData);
 
+	iic_data_structure[1].addr = (0x46 << 1) | 1;
+	iic_data_structure[1].nostart = 0;
+	iic_data_structure[1].d.data = (int*)&buffer;
+	iic_data_structure[1].checksumonly = 0;
+	iic_data_structure[1].len = sizeof(char) * 2;
+
 	regs.r[0] = (int)&iic_data_structure[0];
-	regs.r[1] = 1;
+	regs.r[1] = 2;
 
 	ExecuteSWI(&regs, OS_IICOp);
-	printf("Done writing\n");
 
-	iic_data_structure[1].addr = (0x46 << 1) & 1;
-	iic_data_structure[1].nostart = 0;
-	iic_data_structure[1].d.data = (char*)&buffer;
-	iic_data_structure[1].checksumonly = 1;
-	iic_data_structure[1].len = sizeof(char) * 193;
-	iic_data_structure[1].riscos_retry = 1;
-
-	_kernel_swi_regs test;
-	test.r[0] = (int)&iic_data_structure[1];
-	test.r[1] = 1;
-
-	ExecuteSWI(&test, OS_IICOp);
-	printf("Done reading\n");
-
-	//int i;
-	//for(i = 0; i < 193; i++)
-	//{
-	//	printf("%d, ", buffer[i]);
-	//}
-	printf("Bufer: %d\n", JoyStickData);
+	return buffer[1];
 }
 
 void ExecuteSWI(_kernel_swi_regs *regs, int swi)
