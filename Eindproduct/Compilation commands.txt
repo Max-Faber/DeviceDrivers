@@ -1,0 +1,8 @@
+Joystick C-program:
+gcc -o main main.c
+
+Module:
+cmhg cmhg.LED_Module_CMHG o.LED_Module_O h.LED_Module_H
+cc -c -zM c.LED_Module_C
+link -o LED_Module -m o.LED_Module_C o.LED_Module_O c:o.stubs
+LED_Module
