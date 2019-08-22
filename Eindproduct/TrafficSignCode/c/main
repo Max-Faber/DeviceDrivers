@@ -1,0 +1,122 @@
+/* Includes*/
+#include <stdio.h>
+#include "kernel.h"
+#include "swis.h"
+#include <stdint.h>
+
+#define LEDMODULESWI 0x88000
+
+/* Definition of the required I2C address*/
+#define I2C_ADDRESS 0x46
+
+/* Definition of the required data to request the joystick data over the I2C bus*/
+#define JOYSTICKDATA 0xf2
+
+/* Type definition of the 'iic_transfer' structure which is used by the 'OS_IICOp' SWI*/
+typedef struct iic_transfer {
+	unsigned addr:8;
+	unsigned :21;
+	unsigned riscos_retry:1;
+	unsigned checksumonly:1;
+	unsigned nostart:1;
+	union {
+		unsigned checksum;
+		void *data;
+	} d;
+	unsigned len;
+} iic_transfer;
+
+/* Definition of function prototypes*/
+int ReadJoyStick();
+void CallModuleLED(int TrafficSign);
+void ExecuteSWI(_kernel_swi_regs *regs, int swi);
+
+/* 'main()' function performs the logical actions of the application*/
+int main()
+{
+	/* Retreives the initial joystick value*/
+	int JoyStickValue = ReadJoyStick();
+
+	/* Calls the LED Module based on the initial joystick value*/
+	CallModuleLED(JoyStickValue);
+
+	/* Infinite loop which can be interrupted using the escape button on a keyboard*/
+	while(1)
+	{
+		/* Retreives the current joystick value*/
+		int TempJoyStickValue = ReadJoyStick();
+
+		/* Checks if the joystick value has changed*/
+		if(JoyStickValue != TempJoyStickValue)
+		{
+			/* If so, it lets the user know using the 'printf()' function*/
+			printf("Joystick changed from %d to %d\n", JoyStickValue, TempJoyStickValue);
+
+			/* Updates the joystick value*/
+			JoyStickValue = TempJoyStickValue;
+
+			/* Calls the LED Module based on the new joystick value*/
+			CallModuleLED(JoyStickValue);
+		}
+	}
+	return 0;
+}
+
+/* Function which retreives the current joystick value using I2C*/
+int ReadJoyStick()
+{
+	/* Definition of the data buffer, '_kernel_swi_regs' datatype and an 'iic_transfer' array*/
+	unsigned char buffer[2] = {0}, JoyStickData = JOYSTICKDATA;
+	_kernel_swi_regs regs;
+	struct iic_transfer iic_data_structure[2];
+
+	/* Configuring 'write-mode' by bitshifting the I2C address 1 place to the left and remaining the Least Significant Bit at 0
+	   Sends the 'JOYSTICKDATA' to make a request of the joystick value*/
+	iic_data_structure[0].addr = I2C_ADDRESS << 1;
+	iic_data_structure[0].nostart = 0;
+	iic_data_structure[0].d.data = (int*)&JoyStickData;
+	iic_data_structure[0].checksumonly = 0;
+	iic_data_structure[0].len = sizeof(JoyStickData);
+
+	/* Configuring 'read-mode' by bitshifting the I2C address 1 place to the left and setting the Least Significant Bit at 1
+	   Stores the received data in 'buffer'*/
+	iic_data_structure[1].addr = (I2C_ADDRESS << 1) | 1;
+	iic_data_structure[1].nostart = 0;
+	iic_data_structure[1].d.data = (int*)&buffer;
+	iic_data_structure[1].checksumonly = 0;
+	iic_data_structure[1].len = sizeof(buffer);
+
+	/* Sets a pointer of the first element of the 'iic_data_structure' array to the first register
+	   and sets the amount of I2C operations in the second register*/
+	regs.r[0] = (int)&iic_data_structure[0];
+	regs.r[1] = 2;
+
+	/* Calls the 'ExecuteSWI()' function*/
+	ExecuteSWI(&regs, OS_IICOp);
+
+	/* Returns the joystick value*/
+	return buffer[1];
+}
+
+/* Function which calls the LED module*/
+void CallModuleLED(int TrafficSign)
+{
+	/* Definition of a '_kernel_swi_regs' datatype*/
+	_kernel_swi_regs regs;
+
+	/* Sets the specified trafficsign (joystick value) in the first register*/
+	regs.r[0] = TrafficSign;
+
+	/* Calls the 'ExecuteSWI()' function*/
+	ExecuteSWI(&regs, LEDMODULESWI);
+}
+
+/* Function that executes a SWI and handles errors by notifying the user using the 'printf()' function*/
+void ExecuteSWI(_kernel_swi_regs *regs, int swi)
+{
+	_kernel_oserror *err;
+	err = _kernel_swi(swi, regs, regs);
+
+	if(err != NULL)
+		printf("%s %x\n", err->errmess, err->errnum);
+}

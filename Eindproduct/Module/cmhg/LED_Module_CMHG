@@ -1,0 +1,9 @@
+help-string:  LED_I2C_Module 0.00
+
+title-string: LED_I2C_Module
+
+module-is-runnable:
+
+swi-chunk-base-number: 0x88000
+
+swi-handler-code: led_matrix_traffic_light
